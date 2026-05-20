@@ -1,0 +1,27 @@
+FROM fedora:latest
+
+# Instalar el entorno de escritorio XFCE y herramientas necesarias
+RUN dnf -y update && \
+    dnf -y groupinstall "Xfce Desktop" && \
+    dnf -y install tigervnc-server xorg-x11-xauth net-tools novnc python3-websockify && \
+    dnf clean all
+
+# Configurar variables de entorno para VNC
+ENV DISPLAY=:1
+ENV HOME=/root
+
+# Crear el directorio de configuración de VNC y establecer una contraseña (ej: "fedora")
+RUN mkdir -p /root/.vnc && \
+    echo "fedora" | vncpasswd -f > /root/.vnc/passwd && \
+    chmod 600 /root/.vnc/passwd
+
+# Crear script de inicio para arrancar VNC y noVNC (interfaz web)
+RUN echo -e '#!/bin/bash\n\
+vncserver :1 -geometry 1280x720 -depth 24\n\
+/usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 8080\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Exponer el puerto 8080 para el navegador web
+EXPOSE 8080
+
+CMD ["/entrypoint.sh"]
